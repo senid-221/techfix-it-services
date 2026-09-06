@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const db = getSupabaseAdmin();
     const { data: booking, error } = await db
       .from('bookings')
-      .select('id,booking_number,service_name,preferred_date,preferred_time,status,created_at,updated_at,rejection_reason,admin_note')
+      .select('id,booking_number,service_name,preferred_date,preferred_time,status,created_at,updated_at,rejection_reason')
       .eq('booking_number', bookingNumber)
       .eq('tracking_token', token)
       .maybeSingle();
