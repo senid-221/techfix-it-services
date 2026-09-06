@@ -8,22 +8,41 @@ function clean(value: unknown, max = 200) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const bookingNumber = clean(body.bookingNumber, 40).toUpperCase();
+    const rawBookingNumber = clean(body.bookingNumber, 40);
     const token = clean(body.token, 100);
-    if (!bookingNumber || !token) {
+
+    if (!rawBookingNumber || !token) {
       return NextResponse.json({ error: 'Booking number and tracking token are required.' }, { status: 400 });
+    }
+
+    // The current database stores booking_number as BIGINT. Accept both the
+    // numeric value from the database and the user's input without assuming
+    // the newer TF- text format.
+    const bookingNumber = rawBookingNumber.replace(/^TF-/i, '');
+    if (!/^\d+$/.test(bookingNumber)) {
+      return NextResponse.json({ error: 'Invalid booking number.' }, { status: 400 });
     }
 
     const db = getSupabaseAdmin();
     const { data: booking, error } = await db
       .from('bookings')
-      .select('id,booking_number,service_name,preferred_date,preferred_time,status,created_at,updated_at,rejection_reason')
-      .eq('booking_number', bookingNumber)
+      .select('id,booking_number,service_id,preferred_date,preferred_time,status,created_at,updated_at')
+      .eq('booking_number', Number(bookingNumber))
       .eq('tracking_token', token)
       .maybeSingle();
 
     if (error) return NextResponse.json({ error: 'Unable to load booking.' }, { status: 500 });
     if (!booking) return NextResponse.json({ error: 'Booking not found. Check the booking number and tracking link.' }, { status: 404 });
+
+    let serviceName = 'IT Service';
+    if (booking.service_id !== null && booking.service_id !== undefined) {
+      const { data: service } = await db
+        .from('services')
+        .select('name')
+        .eq('id', booking.service_id)
+        .maybeSingle();
+      if (service?.name) serviceName = service.name;
+    }
 
     const { id, ...safeBooking } = booking;
     const { data: history, error: historyError } = await db
@@ -34,7 +53,16 @@ export async function POST(request: Request) {
 
     if (historyError) return NextResponse.json({ error: 'Unable to load booking history.' }, { status: 500 });
 
-    return NextResponse.json({ booking: safeBooking, history: history ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(
+      {
+        booking: {
+          ...safeBooking,
+          service_name: serviceName,
+        },
+        history: history ?? [],
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch {
     return NextResponse.json({ error: 'Unable to track booking.' }, { status: 500 });
   }
