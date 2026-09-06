@@ -1,24 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { isAdminSession } from '@/lib/admin-auth';
-
-export async function GET() {
-  if (!(await isAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const { data, error } = await getSupabaseAdmin().from('technicians').select('id,name,phone,email,active').order('name');
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ technicians: data ?? [] });
-}
-
-export async function POST(request: Request) {
-  if (!(await isAdminSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    const body = await request.json();
-    const name = typeof body.name === 'string' ? body.name.trim().slice(0,120) : '';
-    const phone = typeof body.phone === 'string' ? body.phone.trim().slice(0,40) : null;
-    const email = typeof body.email === 'string' ? body.email.trim().slice(0,160) : null;
-    if (!name) return NextResponse.json({ error: 'Technician name is required.' }, { status: 400 });
-    const { data, error } = await getSupabaseAdmin().from('technicians').insert({ name, phone, email, active: true }).select('id,name,phone,email,active').single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ technician: data }, { status: 201 });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to create technician.' }, { status: 500 }); }
-}
+export async function GET(){if(!(await isAdminSession()))return NextResponse.json({error:'Unauthorized'},{status:401});const {data,error}=await getSupabaseAdmin().from('technicians').select('id,name,phone,email,active,auth_user_id').order('name');if(error)return NextResponse.json({error:error.message},{status:500});return NextResponse.json({technicians:data??[]});}
+export async function POST(request:Request){if(!(await isAdminSession()))return NextResponse.json({error:'Unauthorized'},{status:401});try{const body=await request.json();const name=typeof body.name==='string'?body.name.trim().slice(0,120):'';const phone=typeof body.phone==='string'?body.phone.trim().slice(0,40):null;const email=typeof body.email==='string'?body.email.trim().toLowerCase().slice(0,160):'';const password=typeof body.password==='string'?body.password:'';if(!name||!email||password.length<8)return NextResponse.json({error:'Name, email and password (8+ chars) are required.'},{status:400});const admin=getSupabaseAdmin();const created=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{role:'TECHNICIAN',full_name:name}});if(created.error||!created.data.user)return NextResponse.json({error:created.error?.message||'Unable to create login.'},{status:500});const {data,error}=await admin.from('technicians').insert({name,phone,email,active:true,auth_user_id:created.data.user.id}).select('id,name,phone,email,active,auth_user_id').single();if(error){await admin.auth.admin.deleteUser(created.data.user.id);return NextResponse.json({error:error.message},{status:500});}return NextResponse.json({technician:data},{status:201});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Unable to create technician.'},{status:500});}}
