@@ -10,7 +10,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      # Public Supabase project URL; safe to expose to the build.
+      NEXT_PUBLIC_SUPABASE_URL: https://rkhkyyuxlcbcvpekuuty.supabase.co
+      # Keep the service-role credential server-side and out of the repository.
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
       TECHFIX_ADMIN_EMAIL: ci@example.com
       TECHFIX_ADMIN_PASSWORD: ci-placeholder
