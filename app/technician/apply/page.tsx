@@ -8,10 +8,8 @@ export default function TechnicianApply(){
  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setBusy(true);setError('');const form=new FormData(e.currentTarget);const r=await fetch('/api/technician-applications',{method:'POST',body:form});const d=await r.json();if(r.ok)setDone(true);else setError(d.error||'Ubusabe ntibwoherejwe.');setBusy(false)}
  if(done)return <section className="section"><div className="container narrow"><div className="form-card success-card"><CheckCircle2 size={44}/><div className="eyebrow">TECHNICIAN APPLICATION</div><h1>Ubusabe bwoherejwe.</h1><p>Admin azabanza gusuzuma payment proof yawe. Niyemezwa, account ya Technician izakorwa kuri email watanze.</p><Link className="btn btn-green" href="/technician/login">Jya kuri Technician Login</Link></div></div></section>;
  return <section className="section"><div className="container narrow"><Link className="text-link" href="/technician/login"><ArrowLeft size={15}/> Technician Login</Link><div className="section-head"><div><div className="eyebrow">BECOME A TECHNICIAN</div><h1>Usabe access ya Technician.</h1><p className="muted">Amafaranga yo kwiyandikisha ni <b>30,000 FRW</b>, ntasubizwa. Admin ni we wemeza ubusabe nyuma yo kubona payment proof.</p></div></div><div className="payment-box">
-  <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
-   <div aria-label="MTN MoMo Pay" style={{width:62,height:62,borderRadius:14,background:'#ffcc00',display:'grid',placeItems:'center',boxShadow:'0 6px 18px rgba(0,0,0,.12)',flex:'0 0 auto'}}>
-    <div style={{width:46,height:46,borderRadius:'50%',border:'3px solid #111',display:'grid',placeItems:'center',background:'#ffcc00',fontWeight:900,fontSize:12,color:'#111',letterSpacing:'-.04em'}}>MTN</div>
-   </div>
+  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,marginBottom:16,flexWrap:'wrap'}}>
+   <img src="https://cdn.prod.website-files.com/62824591015aa377ad308e08/659ffecc1f343e167b34f7ec_Layer_1-2.png" alt="MoMo from MTN" width={150} height={80} style={{width:150,height:80,objectFit:'contain',objectPosition:'left center',background:'#fff',borderRadius:12,padding:8}} />
    <div><b style={{display:'block',fontSize:18}}>MTN MoMo Pay</b><span style={{display:'block',fontSize:12,opacity:.72}}>Payment method</span></div>
   </div>
   <strong>*182*8*1*935237#</strong>
