@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const db = getSupabaseAdmin();
     const { data: booking, error } = await db
       .from('bookings')
-      .select('booking_number,service_name,preferred_date,preferred_time,status,technician_id,created_at,updated_at,rejection_reason,admin_note')
+      .select('id,booking_number,service_name,preferred_date,preferred_time,status,technician_id,created_at,updated_at,rejection_reason,admin_note')
       .eq('booking_number', bookingNumber)
       .eq('tracking_token', token)
       .maybeSingle();
@@ -26,10 +26,10 @@ export async function POST(request: Request) {
     const { data: history } = await db
       .from('booking_status_history')
       .select('from_status,to_status,note,created_at')
-      .eq('booking_id', (await db.from('bookings').select('id').eq('booking_number', bookingNumber).eq('tracking_token', token).single()).data?.id)
+      .eq('booking_id', booking.id)
       .order('created_at', { ascending: true });
 
-    return NextResponse.json({ booking, history: history ?? [] });
+    return NextResponse.json({ booking: { ...booking, id: undefined }, history: history ?? [] });
   } catch {
     return NextResponse.json({ error: 'Unable to track booking.' }, { status: 500 });
   }
