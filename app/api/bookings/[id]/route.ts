@@ -5,6 +5,7 @@ import { isAdminSession } from '@/lib/admin-auth';
 const transitions: Record<string,string[]> = { PENDING:['APPROVED','REJECTED'], APPROVED:['IN_PROGRESS'], IN_PROGRESS:['COMPLETED'] };
 
 export async function GET(_request: Request, { params }: { params: Promise<{id:string}> }) {
+  if (!(await isAdminSession())) return NextResponse.json({error:'Unauthorized'},{status:401});
   const { id } = await params;
   try {
     const db=getSupabaseAdmin();
