@@ -26,8 +26,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = clean(searchParams.get('date'),20);
 
-  // Admin dashboard requests /api/bookings without a date. Keep availability
-  // public, but return the real booking list only to an authenticated admin.
   if (!date && await isAdminSession()) {
     try {
       const db=getSupabaseAdmin();
@@ -69,19 +67,82 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body=await request.json(); const serviceSlug=clean(body.serviceSlug,80); const name=clean(body.name,120); const phone=clean(body.phone,40); const date=clean(body.date,20); const time=clean(body.time,10); const notes=clean(body.notes,1500);
-    if(!serviceSlug||!name||!phone||!date||!time)return NextResponse.json({error:'Service, date, time, name and phone are required.'},{status:400});
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{2}:\d{2}$/.test(time)||!TIME_SLOTS.includes(time))return NextResponse.json({error:'Invalid date or time slot.'},{status:400});
-    if(slotIsTooSoon(date,time))return NextResponse.json({error:'Igihe cyarenze. Booking igomba gukorwa nibura amasaha 2 mbere.'},{status:400});
+    const body=await request.json();
+    const serviceSlug=clean(body.serviceSlug,80);
+    const serviceName=clean(body.serviceName,120);
+    const name=clean(body.name,120);
+    const phone=clean(body.phone,40);
+    const date=clean(body.date,20);
+    const time=clean(body.time,10);
+    const notes=clean(body.notes,1500);
+
+    if(!serviceSlug&&!serviceName||!name||!phone||!date||!time)
+      return NextResponse.json({error:'Service, date, time, name and phone are required.'},{status:400});
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{2}:\d{2}$/.test(time)||!TIME_SLOTS.includes(time))
+      return NextResponse.json({error:'Invalid date or time slot.'},{status:400});
+    if(slotIsTooSoon(date,time))
+      return NextResponse.json({error:'Igihe cyarenze. Booking igomba gukorwa nibura amasaha 2 mbere.'},{status:400});
+
     const supabase=getSupabaseAdmin();
-    let {data:service}=await supabase.from('services').select('id,name,slug').eq('slug',serviceSlug).eq('active',true).maybeSingle();
-    if(!service){const localService=services.find(item=>item.slug===serviceSlug);if(localService){const {data:createdService,error:serviceError}=await supabase.from('services').upsert({slug:localService.slug,name:localService.name,description:localService.description,active:true},{onConflict:'slug'}).select('id,name,slug').single();if(!serviceError)service=createdService;}}
-    if(!service)return NextResponse.json({error:'Selected service is unavailable. Please refresh the page and select the service again.'},{status:400});
+    let service:any=null;
+
+    // Primary lookup: stable service slug. Secondary lookup: service name,
+    // which keeps older/deployed booking clients compatible.
+    if(serviceSlug) {
+      const result=await supabase.from('services').select('id,name,slug').eq('slug',serviceSlug).eq('active',true).maybeSingle();
+      if(result.error && result.error.code!=='PGRST116')
+        return NextResponse.json({error:result.error.message},{status:500});
+      service=result.data;
+    }
+
+    if(!service && serviceName) {
+      const result=await supabase.from('services').select('id,name,slug').eq('name',serviceName).eq('active',true).maybeSingle();
+      if(result.error && result.error.code!=='PGRST116')
+        return NextResponse.json({error:result.error.message},{status:500});
+      service=result.data;
+    }
+
+    // If the service is missing from Supabase, restore it from the canonical
+    // local catalogue instead of returning the misleading "service not found" error.
+    if(!service) {
+      const localService=services.find(item=>item.slug===serviceSlug || item.name===serviceName);
+      if(localService) {
+        const upsert=await supabase.from('services').upsert({
+          slug:localService.slug,
+          name:localService.name,
+          description:localService.description,
+          active:true
+        },{onConflict:'slug'}).select('id,name,slug').single();
+        if(upsert.error)
+          return NextResponse.json({error:`Unable to load service: ${upsert.error.message}`},{status:500});
+        service=upsert.data;
+      }
+    }
+
+    if(!service)
+      return NextResponse.json({error:'Service not found. Please go back and select a service again.'},{status:400});
+
     const {data:existing,error:existingError}=await supabase.from('bookings').select('id').eq('preferred_date',date).eq('preferred_time',time).in('status',ACTIVE_STATUSES).limit(1).maybeSingle();
     if(existingError)return NextResponse.json({error:existingError.message},{status:500});
     if(existing)return NextResponse.json({error:'Time has been taken — Isaha yafashwe. Please choose another available time.'},{status:409});
-    const {data,error}=await supabase.from('bookings').insert({service_id:service.id,customer_name:name,customer_phone:phone,preferred_date:date,preferred_time:time,notes:notes||null,status:'PENDING'}).select('id,booking_number,tracking_token,status,service_id,preferred_date,preferred_time,customer_name,customer_phone,notes,created_at').single();
-    if(error){if(error.code==='23505')return NextResponse.json({error:'Time has been taken — Isaha yafashwe. Please choose another available time.'},{status:409});return NextResponse.json({error:error.message},{status:500});}
+
+    const {data,error}=await supabase.from('bookings').insert({
+      service_id:service.id,
+      customer_name:name,
+      customer_phone:phone,
+      preferred_date:date,
+      preferred_time:time,
+      notes:notes||null,
+      status:'PENDING'
+    }).select('id,booking_number,tracking_token,status,service_id,preferred_date,preferred_time,customer_name,customer_phone,notes,created_at').single();
+
+    if(error){
+      if(error.code==='23505')return NextResponse.json({error:'Time has been taken — Isaha yafashwe. Please choose another available time.'},{status:409});
+      return NextResponse.json({error:error.message},{status:500});
+    }
+
     return NextResponse.json({booking:{...data,service_name:service.name,service_slug:service.slug}},{status:201,headers:{'Cache-Control':'no-store'}});
-  } catch(error) { return NextResponse.json({error:error instanceof Error?error.message:'Unable to create booking.'},{status:500}); }
+  } catch(error) {
+    return NextResponse.json({error:error instanceof Error?error.message:'Unable to create booking.'},{status:500});
+  }
 }
