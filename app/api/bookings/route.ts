@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     if (date) query = query.eq('preferred_date', date);
     const { data, error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const booked = new Set((data ?? []).map((row) => String(row.preferred_time).slice(0,5)));
+    const booked = new Set((data ?? []).map(row => String(row.preferred_time).slice(0,5)));
     return NextResponse.json({ date: date || null, slots: TIME_SLOTS.map(time => ({ time, available: !booked.has(time) })) });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load availability.' }, { status: 500 }); }
 }
@@ -27,11 +27,11 @@ export async function POST(request: Request) {
     if (!serviceSlug || !serviceName || !name || !phone || !date || !time) return NextResponse.json({error:'Service, date, time, name and phone are required.'},{status:400});
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time) || !TIME_SLOTS.includes(time)) return NextResponse.json({error:'Invalid date or time slot.'},{status:400});
     const selected = new Date(`${date}T${time}:00`);
-    if (Number.isNaN(selected.getTime())) return NextResponse.json({error:'Invalid booking date.'},{status:400});
+    if (Number.isNaN(selected.getTime()) || selected < new Date()) return NextResponse.json({error:'Please choose a future booking date and time.'},{status:400});
     const supabase=getSupabaseAdmin();
     const {data:service}=await supabase.from('services').select('id,name,slug').eq('slug',serviceSlug).eq('active',true).maybeSingle();
     if (!service) return NextResponse.json({error:'Selected service is unavailable.'},{status:400});
-    const {data,error}=await supabase.from('bookings').insert({service_id:service.id,service_slug:service.slug,service_name:service.name,customer_name:name,customer_phone:phone,preferred_date:date,preferred_time:time,notes:notes||null,status:'PENDING'}).select('id,booking_number,status,service_name,preferred_date,preferred_time,customer_name,customer_phone,notes,created_at').single();
+    const {data,error}=await supabase.from('bookings').insert({service_id:service.id,service_slug:service.slug,service_name:service.name,customer_name:name,customer_phone:phone,preferred_date:date,preferred_time:time,notes:notes||null,status:'PENDING'}).select('id,booking_number,tracking_token,status,service_name,preferred_date,preferred_time,customer_name,customer_phone,notes,created_at').single();
     if(error) {
       if (error.code === '23505') return NextResponse.json({error:'That time slot was just booked. Please choose another available time.'},{status:409});
       return NextResponse.json({error:error.message},{status:500});
