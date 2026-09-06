@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const db = getSupabaseAdmin();
     const { data: booking, error } = await db
       .from('bookings')
-      .select('booking_number,service_name,preferred_date,preferred_time,status,created_at,updated_at,rejection_reason,admin_note')
+      .select('id,booking_number,service_name,preferred_date,preferred_time,status,created_at,updated_at,rejection_reason,admin_note')
       .eq('booking_number', bookingNumber)
       .eq('tracking_token', token)
       .maybeSingle();
@@ -25,15 +25,16 @@ export async function POST(request: Request) {
     if (error) return NextResponse.json({ error: 'Unable to load booking.' }, { status: 500 });
     if (!booking) return NextResponse.json({ error: 'Booking not found. Check the booking number and tracking link.' }, { status: 404 });
 
+    const { id, ...safeBooking } = booking;
     const { data: history, error: historyError } = await db
       .from('booking_status_history')
       .select('from_status,to_status,note,created_at')
-      .eq('booking_id', (await db.from('bookings').select('id').eq('booking_number', bookingNumber).eq('tracking_token', token).single()).data?.id)
+      .eq('booking_id', id)
       .order('created_at', { ascending: true });
 
     if (historyError) return NextResponse.json({ error: 'Unable to load booking history.' }, { status: 500 });
 
-    return NextResponse.json({ booking, history: history ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ booking: safeBooking, history: history ?? [] }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Unable to track booking.' }, { status: 500 });
   }
