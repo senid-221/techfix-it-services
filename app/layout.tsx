@@ -1,5 +1,6 @@
 import './globals.css';
 import './booking-selection.css';
+import './supericons.css';
 import type { Metadata } from 'next';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
