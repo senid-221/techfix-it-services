@@ -3,9 +3,7 @@
 import {useEffect} from 'react';
 
 type Row={province:string;province_id:string;district:string;district_id:string;sector:string;sector_id:string;cell:string;cell_id:string};
-
 type Level='province'|'district'|'sector'|'cell';
-
 const FIELD:Record<Level,string>={province:'Province',district:'District',sector:'Sector',cell:'Cell'};
 
 function setReactInputValue(input:HTMLInputElement,value:string){
@@ -14,31 +12,12 @@ function setReactInputValue(input:HTMLInputElement,value:string){
   input.dispatchEvent(new Event('input',{bubbles:true}));
   input.dispatchEvent(new Event('change',{bubbles:true}));
 }
-
-function uniqueRows(rows:Row[],key:keyof Row){
-  const map=new Map<string,Row>();
-  rows.forEach(row=>{const id=String(row[key]||'');if(id&&!map.has(id))map.set(id,row)});
-  return Array.from(map.values());
-}
-
-function makeSelect(label:string){
-  const select=document.createElement('select');
-  select.className='rwanda-location-select';
-  select.setAttribute('aria-label',label);
-  const placeholder=document.createElement('option');
-  placeholder.value='';
-  placeholder.textContent=`— ${label} —`;
-  select.appendChild(placeholder);
-  return select;
-}
-
-function option(select:HTMLSelectElement,value:string,text:string){
-  const item=document.createElement('option');item.value=value;item.textContent=text;select.appendChild(item);
-}
+function uniqueRows(rows:Row[],key:keyof Row){const map=new Map<string,Row>();rows.forEach(row=>{const id=String(row[key]||'');if(id&&!map.has(id))map.set(id,row)});return Array.from(map.values())}
+function makeSelect(label:string){const select=document.createElement('select');select.className='rwanda-location-select';select.setAttribute('aria-label',label);const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent=`— ${label} —`;select.appendChild(placeholder);return select}
+function option(select:HTMLSelectElement,value:string,text:string){const item=document.createElement('option');item.value=value;item.textContent=text;select.appendChild(item)}
 
 export default function RwandaLocationCascadeEnhancer(){
   useEffect(()=>{
-    if(window.location.pathname!=='/book')return;
     let cancelled=false;
     let rows:Row[]=[];
     const observer=new MutationObserver(()=>void enhance());
@@ -56,18 +35,27 @@ export default function RwandaLocationCascadeEnhancer(){
       }
     }
 
-    function findInput(grid:Element,level:Level){
-      return Array.from(grid.querySelectorAll('.field')).find(field=>field.querySelector('label')?.textContent?.trim()===FIELD[level])?.querySelector('input') as HTMLInputElement|null;
+    function findInput(grid:Element,level:Level){return Array.from(grid.querySelectorAll('.field')).find(field=>field.querySelector('label')?.textContent?.trim()===FIELD[level])?.querySelector('input') as HTMLInputElement|null}
+
+    function updateContinueButton(grid:Element,original:{province:HTMLInputElement;district:HTMLInputElement;sector:HTMLInputElement;cell:HTMLInputElement}){
+      const button=document.querySelector('.booking-card .btn.btn-green') as HTMLButtonElement|null;
+      if(!button)return;
+      const locationVisible=(grid as HTMLElement).offsetParent!==null;
+      if(!locationVisible){button.removeAttribute('aria-disabled');return}
+      const complete=[original.province.value,original.district.value,original.sector.value,original.cell.value].every(Boolean);
+      button.disabled=!complete;
+      button.setAttribute('aria-disabled',String(!complete));
+      button.title=complete?'':'Hitamo Province, District, Sector na Cell.';
     }
 
     function enhance(){
-      if(cancelled||rows.length===0)return;
+      if(cancelled||rows.length===0||window.location.pathname!=='/book')return;
       const grid=document.querySelector('.location-box .location-grid');
       if(!grid)return;
       if(grid.getAttribute('data-rwanda-cascade')==='ready')return;
       grid.setAttribute('data-rwanda-cascade','ready');
       const original={province:findInput(grid,'province'),district:findInput(grid,'district'),sector:findInput(grid,'sector'),cell:findInput(grid,'cell')};
-      if(Object.values(original).some(input=>!input)){grid.removeAttribute('data-rwanda-cascade');return;}
+      if(Object.values(original).some(input=>!input)){grid.removeAttribute('data-rwanda-cascade');return}
 
       const selects={province:makeSelect('Province'),district:makeSelect('District'),sector:makeSelect('Sector'),cell:makeSelect('Cell')};
       (Object.keys(selects) as Level[]).forEach(level=>{
@@ -92,30 +80,24 @@ export default function RwandaLocationCascadeEnhancer(){
         uniqueRows(source,key).sort((a,b)=>a[name].localeCompare(b[name])).forEach(row=>option(select,row[key],row[name]));
         const match=Array.from(select.options).find(o=>o.value===previous);
         select.value=match?previous:'';
-        select.disabled=level!=='province' && !((level==='district'&&province)||(level==='sector'&&district)||(level==='cell'&&sector));
+        select.disabled=level!=='province'&&!((level==='district'&&province)||(level==='sector'&&district)||(level==='cell'&&sector));
       };
 
       const syncFromInputs=()=>{
         if(syncing)return;
         const p=original.province!.value,d=original.district!.value,s=original.sector!.value,c=original.cell!.value;
         selects.province.value=p;
-        refresh('district');
-        selects.district.value=d;
-        refresh('sector');
-        selects.sector.value=s;
-        refresh('cell');
-        selects.cell.value=c;
+        refresh('district');selects.district.value=d;
+        refresh('sector');selects.sector.value=s;
+        refresh('cell');selects.cell.value=c;
+        updateContinueButton(grid,original as {province:HTMLInputElement;district:HTMLInputElement;sector:HTMLInputElement;cell:HTMLInputElement});
       };
 
       const choose=(level:Level,value:string)=>{
         syncing=true;
         setReactInputValue(original[level]!,value);
-        if(level==='province'){
-          setReactInputValue(original.district!,'');setReactInputValue(original.sector!,'');setReactInputValue(original.cell!,'');
-        }
-        if(level==='district'){
-          setReactInputValue(original.sector!,'');setReactInputValue(original.cell!,'');
-        }
+        if(level==='province'){setReactInputValue(original.district!,'');setReactInputValue(original.sector!,'');setReactInputValue(original.cell!,'')}
+        if(level==='district'){setReactInputValue(original.sector!,'');setReactInputValue(original.cell!,'')}
         if(level==='sector')setReactInputValue(original.cell!,'');
         syncing=false;
         syncFromInputs();
@@ -126,15 +108,13 @@ export default function RwandaLocationCascadeEnhancer(){
       selects.sector.addEventListener('change',e=>choose('sector',(e.target as HTMLSelectElement).value));
       selects.cell.addEventListener('change',e=>choose('cell',(e.target as HTMLSelectElement).value));
       syncFromInputs();
-
       const interval=window.setInterval(syncFromInputs,300);
       (grid as HTMLElement).dataset.rwandaCascadeInterval=String(interval);
     }
 
     observer.observe(document.body,{childList:true,subtree:true});
     void load();
-    return()=>{cancelled=true;observer.disconnect();const grid=document.querySelector('.location-box .location-grid') as HTMLElement|null;if(grid?.dataset.rwandaCascadeInterval)window.clearInterval(Number(grid.dataset.rwandaCascadeInterval));};
+    return()=>{cancelled=true;observer.disconnect();document.querySelectorAll<HTMLElement>('.location-grid[data-rwanda-cascade]').forEach(grid=>{if(grid.dataset.rwandaCascadeInterval)window.clearInterval(Number(grid.dataset.rwandaCascadeInterval))})};
   },[]);
-
   return null;
 }
