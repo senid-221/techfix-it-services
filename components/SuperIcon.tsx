@@ -8,7 +8,7 @@ type IconProps = HTMLAttributes<HTMLSpanElement> & {
 };
 
 const glyphs: Record<string,string> = {
-  CheckCircle2:'check_circle',Clock3:'schedule',ShieldCheck:'verified_user',Wrench:'build',ArrowRight:'arrow_forward',ArrowLeft:'arrow_back',MessageCircle:'chat',CalendarDays:'calendar_month',UserRound:'person',LoaderCircle:'progress_activity',MapPin:'location_on',MapPinned:'location_on',Upload:'upload',Search:'search',HelpCircle:'help',
+  CheckCircle2:'check_circle',Clock3:'schedule',ShieldCheck:'verified_user',Wrench:'build',ArrowRight:'arrow_forward',ArrowLeft:'arrow_back',MessageCircle:'chat',CalendarDays:'calendar_month',UserRound:'person',LoaderCircle:'progress_activity',MapPin:'location_on',MapPinned:'location_on',Upload:'upload',Search:'search',HelpCircle:'help',ChevronDown:'keyboard_arrow_down',
   PlayCircle:'play_circle',XCircle:'cancel',LogOut:'logout',RefreshCw:'refresh',ClipboardList:'assignment',Plus:'add',Power:'power_settings_new',Eye:'visibility',Paperclip:'attach_file',KeyRound:'key',Wallet:'account_balance_wallet',LockKeyhole:'lock',Save:'save',Copy:'content_copy',ExternalLink:'open_in_new',Send:'send',Menu:'menu',X:'close',Globe2:'language',AlertTriangle:'warning',
   ClipboardCheck:'assignment_turned_in',WalletCards:'wallet',Monitor:'desktop_windows',Wifi:'wifi',Globe:'language',
 };
@@ -33,6 +33,7 @@ export const MapPinned=(p:IconProps)=><SuperIcon name="MapPinned" {...p}/>;
 export const Upload=(p:IconProps)=><SuperIcon name="Upload" {...p}/>;
 export const Search=(p:IconProps)=><SuperIcon name="Search" {...p}/>;
 export const HelpCircle=(p:IconProps)=><SuperIcon name="HelpCircle" {...p}/>;
+export const ChevronDown=(p:IconProps)=><SuperIcon name="ChevronDown" {...p}/>;
 export const PlayCircle=(p:IconProps)=><SuperIcon name="PlayCircle" {...p}/>;
 export const XCircle=(p:IconProps)=><SuperIcon name="XCircle" {...p}/>;
 export const LogOut=(p:IconProps)=><SuperIcon name="LogOut" {...p}/>;
