@@ -20,14 +20,6 @@ function maskPhone(value:string|null|undefined){
   return `${phone.slice(0,Math.min(8,phone.length))}......${digits.slice(-2)}`;
 }
 
-function maskName(value:string|null|undefined){
-  const name=String(value||'').trim();
-  if(!name)return 'Customer';
-  const parts=name.split(/\s+/).filter(Boolean);
-  if(parts.length===1)return `${parts[0].slice(0,1)}•••`;
-  return `${parts[0].slice(0,1)}••• ${parts[parts.length-1].slice(0,1)}•••`;
-}
-
 async function withService(admin:ReturnType<typeof getSupabaseAdmin>,bookings:any[]){
   const ids=[...new Set(bookings.map(b=>Number(b.service_id)).filter(Number.isFinite))];
   const mediaIds=bookings.map(b=>b.id);
@@ -66,7 +58,7 @@ async function withService(admin:ReturnType<typeof getSupabaseAdmin>,bookings:an
       preferred_date:b.preferred_date,
       preferred_time:b.preferred_time,
       service_method:b.service_method||null,
-      customer_name:unlocked?b.customer_name:maskName(b.customer_name),
+      customer_name:b.customer_name||'Customer',
       customer_phone:unlocked?b.customer_phone:maskPhone(b.customer_phone),
       details_unlocked:unlocked,
     };
