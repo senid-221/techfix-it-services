@@ -1,16 +1,15 @@
 import { notFound } from 'next/navigation';
 import { services } from '@/lib/services';
+import { allITServices } from '@/lib/it-services';
 import ServiceDetailClient from './ServiceDetailClient';
 
 export function generateStaticParams() {
-  return services.map((service) => ({ slug: service.slug }));
+  return Array.from(new Set([...services.map(service => service.slug), ...allITServices.map(service => service.slug)])).map(slug => ({ slug }));
 }
 
 export default async function ServicePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const service = services.find((item) => item.slug === slug);
-
-  if (!service) notFound();
-
-  return <ServiceDetailClient slug={service.slug} />;
+  const exists = services.some(item => item.slug === slug) || allITServices.some(item => item.slug === slug);
+  if (!exists) notFound();
+  return <ServiceDetailClient slug={slug} />;
 }
