@@ -1,0 +1,13 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
+import {ArrowRight,Search} from 'lucide-react';
+import {itCategories,searchITServices} from '@/lib/it-services';
+
+export default function ServicesPage(){
+ const[lang,setLang]=useState<'rw'|'en'>('rw');const[q,setQ]=useState('');
+ useEffect(()=>{const saved=localStorage.getItem('techfix-language');if(saved==='rw'||saved==='en')setLang(saved);const onLanguage=(event:Event)=>{const next=(event as CustomEvent<'rw'|'en'>).detail;if(next==='rw'||next==='en')setLang(next)};window.addEventListener('techfix-language-change',onLanguage);return()=>window.removeEventListener('techfix-language-change',onLanguage)},[]);
+ const results=useMemo(()=>searchITServices(q),[q]);
+ const rw=lang==='rw';
+ return <section className="section catalog-page"><div className="container"><div className="center-head"><div className="eyebrow">TECHFIX IT SERVICES RWANDA</div><h1>{rw?'Serivisi zose za IT':'All IT Services'}</h1><p>{rw?'Hitamo category, urebe serivisi nyayo ukeneye, hanyuma uyisabe online.':'Choose a category, find the exact service you need, then book online.'}</p></div><label className="catalog-search"><Search size={18}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder={rw?'Shakisha: Laptop, Printer, Wi-Fi, CCTV...':'Search: Laptop, Printer, Wi-Fi, CCTV...'}/></label>{q?<div className="catalog-results"><div className="catalog-result-head"><b>{rw?`${results.length} serivisi zabonetse`:`${results.length} services found`}</b><Link href="/services">{rw?'Siba search':'Clear'}</Link></div><div className="catalog-service-list">{results.map(s=><Link className="catalog-service-item" key={s.slug} href={`/services/${s.slug}`}><span><small>{rw?s.categoryNameRW:s.categoryName}</small><b>{rw?s.nameRW:s.name}</b></span><ArrowRight size={18}/></Link>)}</div></div>:<div className="catalog-grid">{itCategories.map(c=><Link href={`/services/category/${c.slug}`} className="catalog-category-card" key={c.slug}>{c.image?<img src={c.image} alt={rw?c.nameRW:c.name}/>:<div className="catalog-icon">IT</div>}<div className="catalog-category-body"><span className="service-chip">{c.services.length} {rw?'serivisi':'services'}</span><h2>{rw?c.nameRW:c.name}</h2><p>{rw?c.descriptionRW:c.description}</p><span className="card-link">{rw?'Reba serivisi':'View services'} <ArrowRight size={16}/></span></div></Link>)}</div>}</div></section>;
+}
